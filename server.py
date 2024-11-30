@@ -1,4 +1,6 @@
 import socket
+from pymongo import MongoClient
+
 
 # The function to start the server on the server side
 def start_server():
@@ -46,13 +48,34 @@ def start_server():
                     break
 
                 # Print if we receive the data and what its content is
+                connection_string = "mongodb+srv://CECS327:PlumBeast69@cluster0.bhxu6.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+                client = MongoClient(connection_string)
+            
+
                 print(f"Received data from client: {data.decode()}")
                 # Conver the data to uppercase as required to be later sent back to the client.
-                response = data.decode().upper()
+                
+                request = data.decode()
+                try :
+                    db = client["test"]
+                    collection = db["Table1_virtual"]
+                    
+                    match request:
+                        case "1":
+                            for doc in collection.find():
+                                if doc["payload"]["parent_asset_uid"] == "989bbfbe-f5d8-4f58-9eb2-72fdb2e3117b":
+                                    print(doc)
+                except Exception as e:
+                    print(e)
+                # match request:
+                #     case "1":
+
+
+                
                 # Send the data back to the client
-                conn.sendall(response.encode())
+                # conn.sendall(response.encode())
                 # Print the info and the data that we are sending to the client.
-                print(f"Sent data to the client: {response}")
+                # print(f"Sent data to the client: {response}")
 
             # Close the connection
             conn.close()
