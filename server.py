@@ -1,6 +1,15 @@
 import socket
 from pymongo import MongoClient
+from datetime import datetime, timedelta
 
+def relative_moisture_process(data):
+    max_val = 999
+
+    raw_moisture = float(data["payload"]["Moisture Meter - Moisture1"])
+    relative_moisture = (raw_moisture / max_val) * 100
+    return relative_moisture
+
+    
 
 # The function to start the server on the server side
 def start_server():
@@ -50,7 +59,9 @@ def start_server():
                 # Print if we receive the data and what its content is
                 connection_string = "mongodb+srv://CECS327:PlumBeast69@cluster0.bhxu6.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
                 client = MongoClient(connection_string)
-            
+
+                current_time = datetime.now()
+                cutoff = current_time - timedelta(hours=3)
 
                 print(f"Received data from client: {data.decode()}")
                 # Conver the data to uppercase as required to be later sent back to the client.
@@ -62,9 +73,16 @@ def start_server():
                     
                     match request:
                         case "1":
-                            for doc in collection.find():
-                                if doc["payload"]["parent_asset_uid"] == "989bbfbe-f5d8-4f58-9eb2-72fdb2e3117b":
-                                    print(doc)
+                            moisture_values = []
+                            for data in collection.find():
+                                if data["payload"]["parent_asset_uid"] == "080-729-mk9-61n":
+                                    time_rec = data["time"]
+                                    if time_rec > cutoff:
+                                        moisture_values.append(relative_moisture_process(data))
+
+                            for val in moisture_values:
+                                print(val)
+
                 except Exception as e:
                     print(e)
                 # match request:
