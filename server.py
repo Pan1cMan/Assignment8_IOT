@@ -1,6 +1,7 @@
 import socket
 from pymongo import MongoClient
 from datetime import datetime, timedelta
+from collections import defaultdict
 
 class TreeNode:
     def __init__ (self, key, data):
@@ -132,11 +133,16 @@ def start_server():
                     db = client["test"]
                     collection = db["Table1_virtual"]
 
-                    tree = BinaryTree()
+                    # tree = BinaryTree()
 
-                    for data in collection.find():
-                        key = data["payload"]["parent_asset_uid"]
-                        tree.insert(key, data)
+                    # for data in collection.find():
+                    #     key = data["payload"]["parent_asset_uid"]
+                    #     tree.insert(key, data)
+
+                    data = defaultdict(list)
+
+                    for rec in collection.find():
+                        data[rec["payload"]["parent_asset_uid"]].append(rec)
                     
                     match request:
                         case "1":
@@ -152,7 +158,8 @@ def start_server():
                             #             moisture_values.append(relative_moisture_process(data))
 
                             key = "1003"
-                            records = tree.search(key)
+                            # records = tree.search(key)
+                            records = data.get(key, [])
                             moisture_values = []
 
                             current_time = datetime.now()
@@ -181,7 +188,8 @@ def start_server():
                             # water_flow_values = [water_flow_gallons_process(data) for data in water_recs]
 
                             key = "1001"
-                            records = tree.search(key)
+                            # records = tree.search(key)
+                            records = data.get(key, [])
                             water_flow_values = []
 
                             for r in records:
@@ -197,11 +205,6 @@ def start_server():
 
                 except Exception as e:
                     print(e)
-                
-                # Send the data back to the client
-                # conn.sendall(response.encode())
-                # Print the info and the data that we are sending to the client.
-                # print(f"Sent data to the client: {response}")
 
             # Close the connection
             conn.close()
