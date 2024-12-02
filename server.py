@@ -9,6 +9,18 @@ def relative_moisture_process(data):
     relative_moisture = (raw_moisture / max_val) * 100
     return relative_moisture
 
+def water_flow_gallons_process(data):
+    max_flow_rate_lpm = 10
+    
+    raw_water_flow = float(data["payload"].get("WaterFlow1", 0))
+    flow_rate_lpm = (raw_water_flow / 100) * max_flow_rate_lpm
+
+    flow_rate_gpm = flow_rate_lpm * 0.264172
+
+    gallons = flow_rate_gpm * 60
+
+    return gallons
+
     
 
 # The function to start the server on the server side
@@ -86,6 +98,21 @@ def start_server():
                             if moisture_values:
                                 average_moisture = sum(moisture_values) / len(moisture_values)
                                 conn.sendall(f"The average moisture is: {average_moisture}".encode())
+
+                        case "2":
+
+                            water_recs = collection.find({
+                                "payload.parent_asset_uid": "989bbfbe-f5d8-4f58-9eb2-72fdb2e3117b"
+                            })
+                            # for data in water_recs:
+                            #      water_flow_value = data.get("payload", {}).get("WaterFlow1", "Key not found")
+                            #      print(f"WaterFlow1 value: {water_flow_value}")
+                            water_flow_values = [water_flow_gallons_process(data) for data in water_recs]
+
+                            if water_flow_values:
+                                average_water_flow = sum(water_flow_values) / len(water_flow_values)
+                                conn.sendall(f"The average water flow is: {average_water_flow}".encode())
+                                
                             
 
                 except Exception as e:
