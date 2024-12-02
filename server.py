@@ -73,22 +73,23 @@ def start_server():
                     
                     match request:
                         case "1":
-                            moisture_values = []
-                            for data in collection.find():
-                                if data["payload"]["parent_asset_uid"] == "080-729-mk9-61n":
-                                    time_rec = data["time"]
-                                    if time_rec > cutoff:
-                                        moisture_values.append(relative_moisture_process(data))
-
-                            for val in moisture_values:
-                                print(val)
+                            moisture_recs = collection.find({
+                                "payload.parent_asset_uid": "080-729-mk9-61n",
+                                "time": {"$gte": cutoff}
+                            })
+                            moisture_values = [relative_moisture_process(data) for data in moisture_recs]
+                            # for data in collection.find():
+                            #     if data["payload"]["parent_asset_uid"] == "080-729-mk9-61n":
+                            #         time_rec = data["time"]
+                            #         if time_rec > cutoff:
+                            #             moisture_values.append(relative_moisture_process(data))
+                            if moisture_values:
+                                average_moisture = sum(moisture_values) / len(moisture_values)
+                                conn.sendall(f"The average moisture is: {average_moisture}".encode())
+                            
 
                 except Exception as e:
                     print(e)
-                # match request:
-                #     case "1":
-
-
                 
                 # Send the data back to the client
                 # conn.sendall(response.encode())
