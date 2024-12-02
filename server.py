@@ -2,6 +2,55 @@ import socket
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 
+class TreeNode:
+    def __init__ (self, key, data):
+        self.key = key
+        self.data = [data]
+        self.left = None
+        self.right = None
+
+class BinaryTree:
+    def __init__ (self):
+        self.root = None
+    
+    def insert(self, key, data):
+        if self.root is None:
+            self.root = TreeNode(key, data)
+        else:
+            self._insert(self.root, key, data)
+
+    def _insert(self, node, key, data):
+        if key < node.key:
+            if node.left is None:
+                node.left = TreeNode(key, data)
+            else:
+                self._insert(node.left, key, data)
+        
+        elif key > node.key:
+            if node.right is None:
+                node.right = TreeNode(key, data)
+            else:
+                self._insert(node.right, key, data)
+
+        else:
+            node.data.append(data)
+
+    def search(self, key):
+        if self.root is None:
+            return None
+        else:
+            return self._search(self.root, key)
+
+    def _search(self, node, key):
+        if node is None:
+            return None
+        elif key < node.key:
+            return self._search(node.left, key)
+        elif key > node.key:
+            return self._search(node.right, key)
+        else:
+            return node.data
+
 def relative_moisture_process(data):
     max_val = 999
 
@@ -82,35 +131,66 @@ def start_server():
                 try :
                     db = client["test"]
                     collection = db["Table1_virtual"]
+
+                    tree = BinaryTree()
+
+                    for data in collection.find():
+                        key = data["payload"]["parent_asset_uid"]
+                        tree.insert(key, data)
                     
                     match request:
                         case "1":
-                            moisture_recs = collection.find({
-                                "payload.parent_asset_uid": "080-729-mk9-61n",
-                                "time": {"$gte": cutoff}
-                            })
-                            moisture_values = [relative_moisture_process(data) for data in moisture_recs]
+                            # moisture_recs = collection.find({
+                            #     "payload.parent_asset_uid": "080-729-mk9-61n",
+                            #     "time": {"$gte": cutoff}
+                            # })
+                            # moisture_values = [relative_moisture_process(data) for data in moisture_recs]
                             # for data in collection.find():
                             #     if data["payload"]["parent_asset_uid"] == "080-729-mk9-61n":
                             #         time_rec = data["time"]
                             #         if time_rec > cutoff:
                             #             moisture_values.append(relative_moisture_process(data))
+
+                            key = "1003"
+                            records = tree.search(key)
+                            moisture_values = []
+
+                            current_time = datetime.now()
+                            cutoff = current_time - timedelta(hours=3)  
+                            for r in records:
+                                print(r)
+                                if r["time"] > cutoff:
+                                    relative_moisture_process(r)
+                                    moisture_values.append(relative_moisture_process(r))
+
                             if moisture_values:
                                 average_moisture = sum(moisture_values) / len(moisture_values)
+                                print(f"Average moisture: {average_moisture}")
                                 conn.sendall(f"The average moisture is: {average_moisture}".encode())
+                                
 
                         case "2":
 
-                            water_recs = collection.find({
-                                "payload.parent_asset_uid": "989bbfbe-f5d8-4f58-9eb2-72fdb2e3117b"
-                            })
+                            # water_recs = collection.find({
+                            #     "payload.parent_asset_uid": "989bbfbe-f5d8-4f58-9eb2-72fdb2e3117b"
+                            # })
+                            
                             # for data in water_recs:
                             #      water_flow_value = data.get("payload", {}).get("WaterFlow1", "Key not found")
                             #      print(f"WaterFlow1 value: {water_flow_value}")
-                            water_flow_values = [water_flow_gallons_process(data) for data in water_recs]
+                            # water_flow_values = [water_flow_gallons_process(data) for data in water_recs]
+
+                            key = "1001"
+                            records = tree.search(key)
+                            water_flow_values = []
+
+                            for r in records:
+                                print(r)
+                                water_flow_values.append(water_flow_gallons_process(r))
 
                             if water_flow_values:
                                 average_water_flow = sum(water_flow_values) / len(water_flow_values)
+                                print(f"Average water flow: {average_water_flow}")
                                 conn.sendall(f"The average water flow is: {average_water_flow}".encode())
                                 
                             
