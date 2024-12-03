@@ -3,54 +3,54 @@ from pymongo import MongoClient
 from datetime import datetime, timedelta
 from collections import defaultdict
 
-class TreeNode:
-    def __init__ (self, key, data):
-        self.key = key
-        self.data = [data]
-        self.left = None
-        self.right = None
+# class TreeNode:
+#     def __init__ (self, key, data):
+#         self.key = key
+#         self.data = [data]
+#         self.left = None
+#         self.right = None
 
-class BinaryTree:
-    def __init__ (self):
-        self.root = None
+# class BinaryTree:
+#     def __init__ (self):
+#         self.root = None
     
-    def insert(self, key, data):
-        if self.root is None:
-            self.root = TreeNode(key, data)
-        else:
-            self._insert(self.root, key, data)
+#     def insert(self, key, data):
+#         if self.root is None:
+#             self.root = TreeNode(key, data)
+#         else:
+#             self._insert(self.root, key, data)
 
-    def _insert(self, node, key, data):
-        if key < node.key:
-            if node.left is None:
-                node.left = TreeNode(key, data)
-            else:
-                self._insert(node.left, key, data)
+#     def _insert(self, node, key, data):
+#         if key < node.key:
+#             if node.left is None:
+#                 node.left = TreeNode(key, data)
+#             else:
+#                 self._insert(node.left, key, data)
         
-        elif key > node.key:
-            if node.right is None:
-                node.right = TreeNode(key, data)
-            else:
-                self._insert(node.right, key, data)
+#         elif key > node.key:
+#             if node.right is None:
+#                 node.right = TreeNode(key, data)
+#             else:
+#                 self._insert(node.right, key, data)
 
-        else:
-            node.data.append(data)
+#         else:
+#             node.data.append(data)
 
-    def search(self, key):
-        if self.root is None:
-            return None
-        else:
-            return self._search(self.root, key)
+#     def search(self, key):
+#         if self.root is None:
+#             return None
+#         else:
+#             return self._search(self.root, key)
 
-    def _search(self, node, key):
-        if node is None:
-            return None
-        elif key < node.key:
-            return self._search(node.left, key)
-        elif key > node.key:
-            return self._search(node.right, key)
-        else:
-            return node.data
+#     def _search(self, node, key):
+#         if node is None:
+#             return None
+#         elif key < node.key:
+#             return self._search(node.left, key)
+#         elif key > node.key:
+#             return self._search(node.right, key)
+#         else:
+#             return node.data
 
 def relative_moisture_process(data):
     max_val = 999
@@ -71,7 +71,23 @@ def water_flow_gallons_process(data):
 
     return gallons
 
-    
+def amperes_to_kilowatts_process(data, key):
+
+    hours = 1
+    voltage = 240
+    amperes = 0
+
+    if key == "1001":
+        amperes = float(data.get("payload", {}).get("Ammeter(DishWasher1)", 0))
+    elif key == "1002":
+        amperes = float(data.get("payload", {}).get("Ammeter2(Fridge2)", 0))
+    else:
+        amperes = float(data.get("payload", {}).get("Ammeter", 0))
+
+    power_watts = amperes * voltage
+    kilowatts = (power_watts * hours) / 1000
+
+    return kilowatts
 
 # The function to start the server on the server side
 def start_server():
@@ -200,8 +216,32 @@ def start_server():
                                 average_water_flow = sum(water_flow_values) / len(water_flow_values)
                                 print(f"Average water flow: {average_water_flow}")
                                 conn.sendall(f"The average water flow is: {average_water_flow}".encode())
-                                
+                        
+                        case "3":
                             
+                            keys = ["1001", "1002", "1003"]
+                            electricity_records = {}
+
+                            for key in keys:
+
+                                records = data.get(key, [])
+
+                                electricity_values = [amperes_to_kilowatts_process(r, key) for r in records]
+
+                                if electricity_values:
+                                    average_electricity = sum(electricity_values) / len(electricity_values)
+                                    electricity_records[key] = average_electricity
+
+                            if electricity_records:
+                                max_electricity = max(electricity_records, key=electricity_records.get)
+                                max_electricity_value = electricity_records[max_electricity]
+
+                                if max_electricity == "1001":
+                                    conn.sendall(f"The maximum electricity consumption is: the dishwaher with {max_electricity_value} kilowatts.".encode())
+                                elif max_electricity == "1002":
+                                    conn.sendall(f"The maximum electricity consumption is: the second fridge with {max_electricity_value} kilowatts.".encode())
+                                elif max_electricity == "1003":
+                                    conn.sendall(f"The maximum electricity consumption is: the first fridge with {max_electricity_value} kilowatts.".encode())
 
                 except Exception as e:
                     print(e)
